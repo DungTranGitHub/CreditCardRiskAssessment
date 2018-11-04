@@ -1,2 +1,2 @@
-# MelbourneHousingMarket
-Melbourne Housing Market - Tall ML - Core Project
+# Credit Card Risk Assessment
+Credit Card Risk Assessment - Tall ML - Core Project
