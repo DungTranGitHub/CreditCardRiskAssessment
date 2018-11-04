@@ -1,10 +1,13 @@
 ---
 title: "R Notebook"
 output: html_notebook
+Link: https://archive.ics.uci.edu/ml/datasets/default%20of%20credit%20card%20clients
 ---
-
-```{r}
-library(ggplot2)
+Reference:
+https://github.com/zkneupper/Default-Prediction-Capstone/blob/master/notebooks/Data-Wrangling.ipynb
+Emails with professor who provided the datasets:
+https://www.kaggle.com/uciml/default-of-credit-card-clients-dataset/discussion/34608
+```{r warning=FALSE,message=FALSE}
 library(plyr)
 library(dplyr)
 library(Hmisc)
@@ -12,6 +15,8 @@ library(ggpubr)
 library(DMwR)
 library(caret)
 library(pROC)
+library(ggplot2)
+library(ggpubr)
 ```
 
 ## I. Introduction
@@ -19,22 +24,61 @@ library(pROC)
 ## II. Business Understanding
 
 ## III. Data Understanding
-```{r}
-model_dir = "models"
-data_dir = "data"
-### Loading data
-data=read.csv(paste(data_dir,"default.csv",sep="/"), header = TRUE, sep = ",",na.strings = "NA")
-apply(data,2,function(x){sum(is.na(x))/length(x)*100})
-```
-
-Factorize the variables and give values meanningful names:
+This research employed a binary variable, default payment (Yes = 1, No = 0), as the response variable. This study reviewed the literature and used the following 23 variables as explanatory variables: 
+X1: Amount of the given credit (NT dollar): it includes both the individual consumer credit and his/her family (supplementary) credit. 
+X2: Gender (1 = male; 2 = female). 
+X3: Education (1 = graduate school; 2 = university; 3 = high school; 4 = others). 
+X4: Marital status (1 = married; 2 = single; 3 = others). 
+X5: Age (year). 
+X6 - X11: History of past payment. We tracked the past monthly payment records (from April to September, 2005) as follows: X6 = the repayment status in September, 2005; X7 = the repayment status in August, 2005; . . .;X11 = the repayment status in April, 2005. The measurement scale for the repayment status is: -1 = pay duly; 1 = payment delay for one month; 2 = payment delay for two months; . . .; 8 = payment delay for eight months; 9 = payment delay for nine months and above. 
+X12-X17: Amount of bill statement (NT dollar). X12 = amount of bill statement in September, 2005; X13 = amount of bill statement in August, 2005; . . .; X17 = amount of bill statement in April, 2005. 
+X18-X23: Amount of previous payment (NT dollar). X18 = amount paid in September, 2005; X19 = amount paid in August, 2005; . . .;X23 = amount paid in April, 2005. 
 
 
 ## IV. Data Exploration and Preparation
 
-### (1) Visualizations for MCI (Major Crime Indicators) and date-related attributes
+```{r}
+model_dir = "models"
+data_dir = "data"
+```
 
-### (2) Visualizations for the division and neighbourhood attributes
+Factorize the variables and give values meanningful names:
+```{r}
+### Loading data
+data=read.csv(paste(data_dir,"default.csv",sep="/"), header = TRUE, sep = ",",na.strings = "NA")
+# apply(data,2,function(x){sum(is.na(x))/length(x)*100})
+# 1 = male; 2 = female
+data$SEX = factor(mapvalues(data$SEX, from = c(1, 2), to = c("MALE", "FEMALE")))
+# 1 = graduate school; 2 = university; 3 = high school; 4 = others
+data$EDUCATION = factor(mapvalues(data$EDUCATION, from = c(0,1,2,3,4,5,6), to = c("others","graduate school", "university", "high school", "others", "others", "others")))
+# 1 = married; 2 = single; 3 = others
+data$MARRIAGE = factor(mapvalues(data$MARRIAGE, from = c(0,1,2,3), to = c("others", "married", "single","divorced")))
+data$default.payment.next.month = factor(mapvalues(data$default.payment.next.month,from = c(0,1), to = c("no","yes")))
+y = data$default.payment.next.month
+data = data[,-dim(data)[2]]
+data$y = y
+```
+Show basic statistics for all columns:
+```{r}
+str(data)
+summary(data)
+```
+### (1) Visualizations
+```{r}
+for (col in names(data[,-c(1,dim(data)[2])])) {
+    if(!is.factor(data[,col])) next
+    p1 = ggplot(data, aes(data[,col], fill = y)) + geom_bar(position="fill") +
+      labs(x = "Default?", y = col) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))
+    p2 = ggplot(data, aes(data[,col], fill = y)) + geom_bar() +
+      labs(x = "Default?", y = col) +
+      theme(axis.text.x=element_text(angle = -90, hjust = 0))
+    p3 = ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE)
+    print(p3)
+}
+```
+
+
 
 ### (3) Data outliers
 
