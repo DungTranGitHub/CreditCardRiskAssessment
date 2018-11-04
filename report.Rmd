@@ -51,7 +51,7 @@ data=read.csv(paste(data_dir,"default.csv",sep="/"), header = TRUE, sep = ",",na
 data$SEX = factor(mapvalues(data$SEX, from = c(1, 2), to = c("MALE", "FEMALE")))
 # 1 = graduate school; 2 = university; 3 = high school; 4 = others
 data$EDUCATION = factor(mapvalues(data$EDUCATION, from = c(0,1,2,3,4,5,6), to = c("others","graduate school", "university", "high school", "others", "others", "others")))
-# 1 = married; 2 = single; 3 = others
+# 1 = married; 2 = single; 3 = divorced
 data$MARRIAGE = factor(mapvalues(data$MARRIAGE, from = c(0,1,2,3), to = c("others", "married", "single","divorced")))
 data$default.payment.next.month = factor(mapvalues(data$default.payment.next.month,from = c(0,1), to = c("no","yes")))
 y = data$default.payment.next.month
@@ -78,15 +78,153 @@ for (col in names(data[,-c(1,dim(data)[2])])) {
 }
 ```
 
-
-
 ### (3) Data outliers
+Box plots were created to see if there were any outliers that should be addressed.
+```{r warning=FALSE,message=FALSE}
+# box plot for all numeric input ~ y
+draw_box_plot = function() {
+  for (i in 2:(length(data)-1)) {
+    col = colnames(data)[i];
+    if(!is.numeric(data[,i])) next
+    p1 = ggplot(data, aes(x=y, y=data[,i])) + 
+      geom_boxplot(fill="slateblue", alpha=0.2) + 
+      xlab("Default?") + ylab(col)
+    p2 = ggplot(data, aes(x=data[,col],fill=y)) + geom_histogram(position = "fill") + xlab(col)
+    p3 = ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE)
+    print(p3)
+  }
+}
+draw_box_plot()
+```
 
 ### (4) Data Preprocessing
 
+```{r warning=FALSE,message=FALSE}
+set.seed(42)
+split = createDataPartition(data$y, times = 1, p=0.25, list = F)
+train = data[split,]
+test = data[-split,]
+train_x = train[,names(train)!="y"]
+train_y = train$y
+folds <- createFolds(train_y, k = 5)
+myControl <- trainControl(
+  summaryFunction = twoClassSummary,
+  classProbs = TRUE,
+  savePredictions = TRUE,
+  index = folds,
+  verboseIter = F
+)
+```
 ## V. Modeling
 
+### (2) Classification Tree
+
+```{r}
+if(!exists("model_rpart")) {
+  model_rpart <- train(
+  y ~ ., train,
+  metric = "ROC",
+  method = "rpart",
+  trControl = myControl,
+  tuneGrid = expand.grid(
+    cp = seq(0,0.01,0.001)
+  )
+)
+}
+plot(model_rpart)
+```
+
+### (3) Naive Bayes
+
+```{r}
+if(!exists("model_nb")) {
+  model_nb <- train(
+  y ~ ., train,
+  metric = "ROC",
+  method = "naive_bayes",
+  trControl = myControl
+)
+}
+plot(model_nb)
+```
+
+### (4) Generalized Linear Model (glmnet):
+
+```{r}
+if(!exists("model_glmnet")) {
+  model_glmnet <- caret::train(
+  y ~ ., train,
+  metric = "ROC",
+  method = "glmnet",
+  tuneGrid = expand.grid(
+    alpha = c(0,1),
+    lambda = 10:0/50
+  ),
+  trControl = myControl
+)
+}
+plot(model_glmnet)
+```
+
+### (5) glmnet with PCA preprocessing
+
+```{r}
+if(!exists("model_glmnet_pca")) {
+  model_glmnet_pca <- train(
+    y ~ ., train,
+    metric = "ROC",
+    method = "glmnet",
+    tuneGrid = expand.grid(
+      alpha = c(0,1),
+      lambda = 10:0/50
+    ),
+    trControl = myControl,
+    preProcess = c("zv", "nzv","center","scale","pca")
+  )
+}
+plot(model_glmnet_pca)
+```
+
+### (6) glmnet with manual feature selection:
+
+
+```{r}
+
+```
+
+### (7) Random Forest
+
+```{r}
+if(!exists("model_rf")) {
+  model_rf <- caret::train(
+  y ~ ., train,
+  metric = "ROC",
+  method = "ranger",
+  importance = 'impurity',
+  trControl = myControl,
+  tuneGrid = expand.grid(
+    mtry = seq(1,10,1),
+    splitrule = c("gini","extratrees"),
+    min.node.size = c(1)
+  )
+)
+}
+plot(model_rf)
+```
+
 ## VI. Evaluation
+
+```{r}
+model_list = list(rf=model_rf,
+                  glmnet=model_glmnet,
+                  glmnet_pca=model_glmnet_pca,
+                  rpart=model_rpart,
+                  nb=model_nb
+                  )
+resamps <- resamples(model_list)
+summary(resamps, metric = "ROC")
+dotplot(resamps, metric = "ROC")
+```
 
 ## VII. Deployment
 
