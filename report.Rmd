@@ -1,0 +1,49 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(Hmisc)
+library(ggpubr)
+library(DMwR)
+library(caret)
+library(pROC)
+```
+
+## I. Introduction
+
+## II. Business Understanding
+
+## III. Data Understanding
+```{r}
+model_dir = "models"
+data_dir = "data"
+### Loading data
+data=read.csv(paste(data_dir,"default.csv",sep="/"), header = TRUE, sep = ",",na.strings = "NA")
+apply(data,2,function(x){sum(is.na(x))/length(x)*100})
+```
+
+Factorize the variables and give values meanningful names:
+
+
+## IV. Data Exploration and Preparation
+
+### (1) Visualizations for MCI (Major Crime Indicators) and date-related attributes
+
+### (2) Visualizations for the division and neighbourhood attributes
+
+### (3) Data outliers
+
+### (4) Data Preprocessing
+
+## V. Modeling
+
+## VI. Evaluation
+
+## VII. Deployment
+
+## VIII. Conclusions
